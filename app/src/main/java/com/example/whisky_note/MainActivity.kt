@@ -1,5 +1,6 @@
 package com.example.whisky_note
 
+import Note
 import android.Manifest
 import android.app.Activity
 import android.content.ContentValues
@@ -53,7 +54,12 @@ class MainActivity : AppCompatActivity() {
 
         main()
     }
-
+    fun openReviewActivity(note: Note) {
+        Intent(this@MainActivity, ReviewActivity::class.java).also { intent ->
+            intent.putExtra("note", note)
+            startActivity(intent)
+        }
+    }
     fun isPermitted(permissions: Array<String>): Boolean {
         for (permission in permissions) {
             val result = ContextCompat.checkSelfPermission(this, permission)
@@ -77,51 +83,6 @@ class MainActivity : AppCompatActivity() {
             // Save a file: path for use with ACTION_VIEW intents
             currentPhotoPath = absolutePath
         }
-    }
-
-    fun buttonClickEvent() {
-        val dbHelper = DBHelper(this)
-        val db = dbHelper.readableDatabase
-
-        // 데이터베이스에서 데이터 조회
-        val cursor = db.query(DBHelper.TABLE_NAME, null, null, null, null, null, null)
-
-        if (cursor.moveToFirst()) {
-            do {
-                val review = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_REVIEW))
-                val name = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_NAME))
-                val nose = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_NOSE))
-                val palate = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_PALATE))
-                val finish = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_FINISH))
-                val rating = cursor.getFloat(cursor.getColumnIndex(DBHelper.COLUMN_RATING))
-                val imagePath = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_IMAGE_PATH))
-
-                setContentView(R.layout.activity_note)
-
-                // 해당 뷰들을 초기화
-                imagePreview = findViewById(R.id.imagePreview)
-                editText_review = findViewById(R.id.editText_review)
-                editText_name = findViewById(R.id.editText_name)
-                editText_nose = findViewById(R.id.editText_nose)
-                editText_palate = findViewById(R.id.editText_palate)
-                editText_finish = findViewById(R.id.editText_finish)
-                starRating = findViewById(R.id.ratingBar)
-
-                editText_review.setText(review)
-                editText_name.setText(name)
-                editText_nose.setText(nose)
-                editText_palate.setText(palate)
-                editText_finish.setText(finish)
-                starRating.rating = rating
-
-                note(review, name, nose, palate, finish, rating, imagePath)
-
-                if (!imagePath.isNullOrEmpty()) {
-                    Glide.with(this).load(imagePath).into(imagePreview)
-                }
-            } while (cursor.moveToNext())
-        }
-        cursor.close()
     }
 
     fun openCamera() {
@@ -152,7 +113,7 @@ class MainActivity : AppCompatActivity() {
         if (resultCode == Activity.RESULT_OK) {
             when (requestCode) {
                 FLAG_REQ_CAMERA -> {
-                    note()
+                    note(imagePath = currentPhotoPath)
                     isCameraActivated = true // 카메라가 실행되었다는 것을 표시
                 }
             }
@@ -182,24 +143,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun addNewImageButton() {
-        // 버튼을 동적으로 생성하고 레이아웃에 추가
-        val newImageButton = ImageButton(this)
-        val layoutParams = GridLayout.LayoutParams()
-        layoutParams.width = 500 // ImageButton의 너비를 200px로 설정합니다.
-        layoutParams.height = 500 // ImageButton의 높이를 200px로 설정합니다.
-        layoutParams.rightMargin = 10
-        layoutParams.leftMargin = 10
-        layoutParams.bottomMargin = 10
-        layoutParams.topMargin = 10
-        newImageButton.layoutParams = layoutParams
-        Glide.with(this).load(currentPhotoPath).into(newImageButton)
-        newImageButton.setOnClickListener {
-            buttonClickEvent()
-        }
-        buttonLayout.addView(newImageButton)
-    }
+    fun addNewImageButton(){
+        // DBHelper 인스턴스 생성
+        val dbHelper = DBHelper(this)
+        val db = dbHelper.readableDatabase
 
+        val cursor = db.query(DBHelper.TABLE_NAME, null, null, null, null,null,"${DBHelper.COLUMN_ID} DESC")
+
+        if (cursor.moveToFirst()) {
+            do {
+                val newImageButton = ImageButton(this)
+                val layoutParams = GridLayout.LayoutParams()
+                layoutParams.width = 500
+                layoutParams.height = 500
+                layoutParams.rightMargin = 20
+                layoutParams.leftMargin = 20
+                layoutParams.topMargin = 40
+
+
+                newImageButton.layoutParams = layoutParams
+
+
+                // 여기서 각각의 imagePath를 사용하여 Glide로 로드합니다.
+                val imagePathForButton: String? =
+                    cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_IMAGE_PATH))
+                if (!imagePathForButton.isNullOrEmpty()) {
+                    Glide.with(this).load(imagePathForButton).centerCrop().into(newImageButton)
+                }
+
+                newImageButton.tag = Note(
+                    id = cursor.getInt(cursor.getColumnIndex(DBHelper.COLUMN_ID)),  // Add this line
+                    review = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_REVIEW)),
+                    name = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_NAME)),
+                    nose = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_NOSE)),
+                    palate = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_PALATE)),
+                    finish=cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_FINISH)),
+                    rating=cursor.getFloat(cursor.getColumnIndex(DBHelper.COLUMN_RATING)),
+                    imagePath=imagePathForButton ?: ""
+                )
+
+                newImageButton.setOnClickListener{
+                    openReviewActivity(it.tag as Note)
+                }
+
+                buttonLayout.addView(newImageButton)
+
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+    }
         fun main() {
             setContentView(R.layout.activity_main)
 
@@ -207,11 +199,9 @@ class MainActivity : AppCompatActivity() {
             buttonLayout = findViewById(R.id.buttonLayout)
 
             val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-            val doneButtonCount = sharedPreferences.getInt("doneButtonCount", 0)
+            //val doneButtonCount = sharedPreferences.getInt("doneButtonCount", 0)
 
-            for (i in 0 until doneButtonCount) {
                 addNewImageButton()
-            }
 
             buttonCamera.setOnClickListener {
                 if (isPermitted(CAMERA_AND_STORAGE_PERMISSION)) {
@@ -225,15 +215,14 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
-
     fun note(
         review: String? = null, name: String? = null,
         nose: String? = null, palate: String? = null,
         finish: String? = null, rating: Float? = null,
-        imagePath: String? = null, bitmap: Bitmap? = null
+        imagePath: String? = null
     ) {
         setContentView(R.layout.activity_note)
+
         imagePreview = findViewById(R.id.imagePreview)
         editText_review = findViewById(R.id.editText_review)
         editText_name = findViewById(R.id.editText_name)
@@ -242,68 +231,50 @@ class MainActivity : AppCompatActivity() {
         editText_finish = findViewById(R.id.editText_finish)
         starRating = findViewById(R.id.ratingBar)
 
-
-
-        // 값이 있으면 화면에 표시
         editText_review.setText(review ?: "")
         editText_name.setText(name ?: "")
         editText_nose.setText(nose ?: "")
         editText_palate.setText(palate ?: "")
         editText_finish.setText(finish ?: "")
-        starRating.rating = rating ?: 0f
+        starRating.rating=rating?:0f
+
         if (!imagePath.isNullOrEmpty()) {
-            Glide.with(this).load(imagePath).into(imagePreview)
+            Glide.with(this).load(imagePath).centerCrop().into(imagePreview)
         }
 
-        val btn_done: Button = findViewById(R.id.button_done)
-        val btn_remove: ImageButton = findViewById(R.id.button_remove)
+        val btn_done=findViewById<Button>(R.id.button_done)
 
-        btn_done.setOnClickListener {
-            val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-            val editor = sharedPreferences.edit()
+        btn_done.setOnClickListener{
+            val reviewInput=editText_review.text.toString()
+            val nameInput=editText_name.text.toString()
+            val noseInput=editText_nose.text.toString()
+            val palateInput=editText_palate.text.toString()
+            val finishInput=editText_finish.text.toString()
+            val ratingInput=starRating.rating
 
-            val review = editText_review.text.toString()
-            val name = editText_name.text.toString()
-            val nose = editText_nose.text.toString()
-            val palate = editText_palate.text.toString()
-            val finish = editText_finish.text.toString()
-            val rating = starRating.rating
+            val dbHelper=DBHelper(this@MainActivity)
 
-            // 데이터를 SharedPreferences에 저장
-            editor.putString("editText_review", review)
-            editor.putString("editText_name", name)
-            editor.putString("editText_nose", nose)
-            editor.putString("editText_palate", palate)
-            editor.putString("editText_finish", finish)
-            editor.putFloat("ratingBar", rating)
-            editor.apply()
+            var values=ContentValues().apply{
+                put(DBHelper.COLUMN_REVIEW,reviewInput )
+                put(DBHelper.COLUMN_NAME,nameInput )
+                put(DBHelper.COLUMN_NOSE,noseInput )
+                put(DBHelper.COLUMN_PALATE,palateInput )
+                put(DBHelper.COLUMN_FINISH,finishInput )
+                put(DBHelper.COLUMN_RATING,ratingInput)
 
-            // DBHelper 인스턴스 생성
-            val dbHelper = DBHelper(this)
-            val db = dbHelper.writableDatabase
-
-            // ContentValues에 데이터 담기
-            val values = ContentValues().apply {
-                put(DBHelper.COLUMN_REVIEW, review)
-                put(DBHelper.COLUMN_NAME, name)
-                put(DBHelper.COLUMN_NOSE, nose)
-                put(DBHelper.COLUMN_PALATE, palate)
-                put(DBHelper.COLUMN_FINISH, finish)
-                put(DBHelper.COLUMN_RATING, rating)
-                put(DBHelper.COLUMN_IMAGE_PATH, currentPhotoPath)
+                if(currentPhotoPath !=null){
+                    put (DBHelper.COLUMN_IMAGE_PATH,currentPhotoPath!!)
+                }
             }
 
-            // 데이터베이스에 데이터 삽입
-            db.insert(DBHelper.TABLE_NAME, null, values)
-            if (isCameraActivated) { // 카메라가 실행되었을 때만 버튼 추가
-                val sharedPref = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-                val doneButtonCount = sharedPref.getInt("doneButtonCount", 0)
-                sharedPref.edit().putInt("doneButtonCount", doneButtonCount + 1).apply()
+            dbHelper.writableDatabase.insertOrThrow(DBHelper.TABLE_NAME,null,values )
+
+            if (isCameraActivated) {
                 addNewImageButton()
-                isCameraActivated = false // 버튼을 추가한 후에는 플래그를 다시 false로 설정
+                isCameraActivated=false
             }
 
-            main()
+            finish()
         }
     }
 }

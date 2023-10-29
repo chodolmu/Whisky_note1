@@ -10,6 +10,7 @@
         android:id="@+id/buttonCamera"
         android:layout_width="50dp"
         android:layout_height="50dp"
+        android:layout_marginBottom="10dp"
         android:background="@drawable/roundedbutton"
         android:backgroundTint="@color/white"
         android:scaleType="centerInside"
@@ -18,19 +19,28 @@
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.976"
+        app:layout_constraintVertical_bias="1.0"
         app:srcCompat="@drawable/plus_button" />
 
-    <GridLayout
-        android:id="@+id/buttonLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:columnCount="2"
-        android:gravity="start|top"
-        app:layout_constraintBottom_toTopOf="@+id/buttonCamera"
+    <ScrollView
+        android:id="@+id/scrollView2"
+        android:layout_width="413dp"
+        android:layout_height="672dp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        tools:layout_editor_absoluteY="-1dp">
+
+        <GridLayout
+            android:id="@+id/buttonLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:gravity="start|top"
+            app:layout_constraintBottom_toTopOf="@+id/buttonCamera"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </ScrollView>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
 
 
