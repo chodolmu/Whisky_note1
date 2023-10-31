@@ -6,16 +6,23 @@ import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
+import android.content.res.ColorStateList
+import android.graphics.Color
+import android.graphics.Typeface
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
+import android.text.SpannableString
+import android.text.style.StyleSpan
+import android.util.TypedValue
+import android.view.Gravity
 import android.widget.Button
 import android.widget.EditText
 import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.RatingBar
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -109,7 +116,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (resultCode == Activity.RESULT_OK) {
             when (requestCode) {
                 FLAG_REQ_CAMERA -> {
@@ -143,78 +149,150 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun addNewImageButton(){
+    fun addNewImageButton() {
         // DBHelper 인스턴스 생성
         val dbHelper = DBHelper(this)
         val db = dbHelper.readableDatabase
 
-        val cursor = db.query(DBHelper.TABLE_NAME, null, null, null, null,null,"${DBHelper.COLUMN_ID} DESC")
+        val cursor = db.query(DBHelper.TABLE_NAME, null, null, null, null, null, "${DBHelper.COLUMN_ID} DESC")
+
+        buttonLayout.columnCount = 2
 
         if (cursor.moveToFirst()) {
             do {
-                val newImageButton = ImageButton(this)
-                val layoutParams = GridLayout.LayoutParams()
-                layoutParams.width = 500
-                layoutParams.height = 500
-                layoutParams.rightMargin = 20
-                layoutParams.leftMargin = 20
-                layoutParams.topMargin = 40
-
-
-                newImageButton.layoutParams = layoutParams
-
-
-                // 여기서 각각의 imagePath를 사용하여 Glide로 로드합니다.
-                val imagePathForButton: String? =
-                    cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_IMAGE_PATH))
-                if (!imagePathForButton.isNullOrEmpty()) {
-                    Glide.with(this).load(imagePathForButton).centerCrop().into(newImageButton)
-                }
-
-                newImageButton.tag = Note(
-                    id = cursor.getInt(cursor.getColumnIndex(DBHelper.COLUMN_ID)),  // Add this line
+                val note = Note(
+                    id = cursor.getInt(cursor.getColumnIndex(DBHelper.COLUMN_ID)),
                     review = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_REVIEW)),
                     name = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_NAME)),
                     nose = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_NOSE)),
                     palate = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_PALATE)),
-                    finish=cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_FINISH)),
-                    rating=cursor.getFloat(cursor.getColumnIndex(DBHelper.COLUMN_RATING)),
-                    imagePath=imagePathForButton ?: ""
+                    finish = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_FINISH)),
+                    rating = cursor.getFloat(cursor.getColumnIndex(DBHelper.COLUMN_RATING)),
+                    imagePath = cursor.getString(cursor.getColumnIndex(DBHelper.COLUMN_IMAGE_PATH)) ?: ""
                 )
 
-                newImageButton.setOnClickListener{
-                    openReviewActivity(it.tag as Note)
+                val newImageButton = ImageButton(this).apply {
+                    val buttonParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        width = 500
+                        height = 500
+                        leftMargin = 12
+                        topMargin = 10
+                    }
+                    this.layoutParams = buttonParams
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    background=null
+                    if (!note.imagePath.isNullOrEmpty()) {
+                        Glide.with(this@MainActivity).load(note.imagePath).fitCenter().centerCrop().into(this)
+                    }
+                    setOnClickListener {
+                        openReviewActivity(note)
+                    }
                 }
 
-                buttonLayout.addView(newImageButton)
+                val editTextNote = EditText(this).apply {
+                    // EditText 설정...
+                    setText(note.name ?: "")
+                    val editTextParams = LinearLayout.LayoutParams(
+                        500, // 가로 크기를 500으로 설정
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    this.layoutParams = editTextParams
+                    gravity = Gravity.CENTER // 텍스트 가운데 정렬
+                    isEnabled = false // 편집 불가능하도록 설정
+                    setTextColor(Color.BLACK) // 글자 색상을 검정색으로 설정
+                    background = null // 밑줄 제거
+                }
+                val starRating = RatingBar(this, null, android.R.attr.ratingBarStyleSmall).apply {
+                    rating = note.rating ?: 0f // 노트 평점을 표시
+                    numStars = 5 // 표시할 별 개수
+
+                    val starSize = TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP,
+                        13f, // 별 하나의 크기를 15dp로 설정
+                        resources.displayMetrics
+                    )
+                    val starPadding = TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP,
+                        3f, // 별 이미지 사이에 추가할 여유분 크기를 3dp로 설정
+                        resources.displayMetrics
+                    )
+
+                    val ratingBarParams = LinearLayout.LayoutParams(
+                        ((starSize + starPadding) * numStars).toInt(), // 너비를 (별 크기 + 여유분)과 별 개수의 곱으로 설정
+                        LinearLayout.LayoutParams.WRAP_CONTENT // 높이를 wrap_content로 설정
+                    )
+                    layoutParams = ratingBarParams
+
+                    // 별 색상 변경
+                    val color = Color.parseColor("#C51515") // 원하는 색상 값
+                    progressTintList = ColorStateList.valueOf(color) // progressTint 속성에 색상 적용
+
+                    setIsIndicator(true) // 사용자 입력을 받지 않고 단지 점수를 표시하는 용도로만 사용
+                }
+
+                val ratingBarContainer = LinearLayout(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT, // 너비를 match_parent로 설정
+                        LinearLayout.LayoutParams.WRAP_CONTENT // 높이를 wrap_content로 설정
+                    )
+                    gravity = Gravity.CENTER // 중앙 정렬
+                    addView(starRating) // RatingBar를 ratingBarContainer에 추가합니다.
+                }
+                val noteLayout = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER
+                    addView(newImageButton)
+                    addView(editTextNote)
+                    addView(ratingBarContainer) // ratingBarContainer를 추가합니다.
+                }
+
+                val params = GridLayout.LayoutParams().apply {
+                    width = GridLayout.LayoutParams.WRAP_CONTENT
+                    height = GridLayout.LayoutParams.WRAP_CONTENT
+                    leftMargin = 10
+                    topMargin = 10
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1)
+
+                    // 한 행에 한 개씩 배치
+                }
+
+                noteLayout.layoutParams = params
+
+                buttonLayout.addView(noteLayout)
 
             } while (cursor.moveToNext())
         }
         cursor.close()
     }
-        fun main() {
-            setContentView(R.layout.activity_main)
 
-            val buttonCamera: ImageButton = findViewById(R.id.buttonCamera)
-            buttonLayout = findViewById(R.id.buttonLayout)
 
-            val sharedPreferences = getSharedPreferences("MySharedPref", MODE_PRIVATE)
-            //val doneButtonCount = sharedPreferences.getInt("doneButtonCount", 0)
 
-                addNewImageButton()
 
-            buttonCamera.setOnClickListener {
-                if (isPermitted(CAMERA_AND_STORAGE_PERMISSION)) {
-                    openCamera()
-                } else {
-                    ActivityCompat.requestPermissions(
-                        this,
-                        CAMERA_AND_STORAGE_PERMISSION,
-                        FLAG_PERM_CAMERA
-                    )
-                }
+    fun main() {
+        setContentView(R.layout.activity_main)
+
+        val buttonCamera: ImageButton = findViewById(R.id.buttonCamera)
+        buttonLayout = findViewById(R.id.buttonLayout)
+
+        buttonLayout.columnCount = 2 // GridLayout의 columnCount를 2로 설정
+
+        addNewImageButton() // addNewImageButton() 함수 호출
+
+        buttonCamera.setOnClickListener {
+            if (isPermitted(CAMERA_AND_STORAGE_PERMISSION)) {
+                openCamera()
+            } else {
+                ActivityCompat.requestPermissions(
+                    this,
+                    CAMERA_AND_STORAGE_PERMISSION,
+                    FLAG_PERM_CAMERA
+                )
             }
         }
+    }
     fun note(
         review: String? = null, name: String? = null,
         nose: String? = null, palate: String? = null,
@@ -230,7 +308,14 @@ class MainActivity : AppCompatActivity() {
         editText_palate = findViewById(R.id.editText_palate)
         editText_finish = findViewById(R.id.editText_finish)
         starRating = findViewById(R.id.ratingBar)
+        val editTexts = listOf(editText_name, editText_nose, editText_palate, editText_finish, editText_review)
 
+        editTexts.forEach { editText ->
+            val hint = editText.hint.toString()
+            val spannableString = SpannableString(hint)
+            spannableString.setSpan(StyleSpan(Typeface.ITALIC), 0, hint.length, 0)
+            editText.hint = spannableString
+        }
         editText_review.setText(review ?: "")
         editText_name.setText(name ?: "")
         editText_nose.setText(nose ?: "")
@@ -273,8 +358,7 @@ class MainActivity : AppCompatActivity() {
                 addNewImageButton()
                 isCameraActivated=false
             }
-
-            finish()
+            main()
         }
     }
 }

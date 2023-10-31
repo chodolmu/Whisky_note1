@@ -10,24 +10,22 @@
         android:id="@+id/buttonCamera"
         android:layout_width="50dp"
         android:layout_height="50dp"
-        android:layout_marginBottom="10dp"
         android:background="@drawable/roundedbutton"
         android:backgroundTint="@color/white"
         android:scaleType="centerInside"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="1.0"
         app:srcCompat="@drawable/plus_button" />
 
     <ScrollView
         android:id="@+id/scrollView2"
-        android:layout_width="413dp"
-        android:layout_height="672dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@+id/buttonCamera"
         app:layout_constraintEnd_toEndOf="parent"
-        tools:layout_editor_absoluteY="-1dp">
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textView">
 
         <GridLayout
             android:id="@+id/buttonLayout"
@@ -40,6 +38,21 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
     </ScrollView>
+
+    <TextView
+        android:id="@+id/textView"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:background="#000000"
+        android:textStyle="bold"
+        android:fontFamily="@font/alex"
+        android:gravity="center"
+        android:text="Whisky Note"
+        android:textColor="#FFFFFF"
+        android:textSize="34sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 
