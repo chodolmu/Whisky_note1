@@ -9,12 +9,14 @@ import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.Typeface
+import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.text.SpannableString
 import android.text.style.StyleSpan
+import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.Button
@@ -45,10 +47,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var buttonLayout: GridLayout
     private var isCameraActivated = false
 
+//    val CAMERA_AND_STORAGE_PERMISSION = arrayOf(
+//        Manifest.permission.CAMERA,
+//        Manifest.permission.READ_EXTERNAL_STORAGE,
+//        Manifest.permission.WRITE_EXTERNAL_STORAGE
+//    )
     val CAMERA_AND_STORAGE_PERMISSION = arrayOf(
+        Manifest.permission.READ_MEDIA_IMAGES,
         Manifest.permission.CAMERA,
-        Manifest.permission.READ_EXTERNAL_STORAGE,
-        Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
     val FLAG_PERM_CAMERA = 98
     val FLAG_PERM_STORAGE = 99
@@ -68,12 +74,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
     fun isPermitted(permissions: Array<String>): Boolean {
+
+        Log.d("MainActivity1", "Checking permissions") // 권한 확인 시작
         for (permission in permissions) {
             val result = ContextCompat.checkSelfPermission(this, permission)
             if (result != PackageManager.PERMISSION_GRANTED) {
+                Log.d("MainActivity1", "Permission denied: $permission") // 미허용 권한 확인
                 return false
             }
         }
+        Log.d("MainActivity1", "All permissions granted") // 모든 권한 허용 확인
         return true
     }
 
@@ -92,27 +102,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun createImageUri(): Uri {
+        val timeStamp: String = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "JPEG_${timeStamp}_")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        return contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)!!
+    }
+
     fun openCamera() {
+        Log.d("MainActivity1", "Open camera called") // 함수 호출 확인
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
         if (intent.resolveActivity(packageManager) != null) {
-            var photoFile: File? = null
-            try {
-                photoFile = createImageFile()
-            } catch (ex: IOException) {
-            }
+            Log.d("MainActivity1", "Camera intent can be handled") // 카메라 인텐트 처리 가능 확인
+            val photoUri = createImageUri()
+            currentPhotoPath = photoUri.toString()
 
-            if (photoFile != null) {
-                val photoURI = FileProvider.getUriForFile(
-                    this,
-                    "com.example.whisky_note.fileprovider",
-                    photoFile
-                )
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+            startActivityForResult(intent, FLAG_REQ_CAMERA)
 
-                intent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
-                startActivityForResult(intent, FLAG_REQ_CAMERA)
-            }
+            Log.d("MainActivity1", "Camera opened") // 카메라 열림 확인
+        } else {
+            Log.d("MainActivity1", "Cannot resolve camera intent") // 카메라 인텐트 처리 불가 확인
         }
     }
+
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
@@ -144,13 +159,15 @@ class MainActivity : AppCompatActivity() {
                 }
                 if (checked) {
                     openCamera()
+                } else {
+                    Log.d("MainActivity1", "Permission denied")
                 }
             }
         }
     }
 
     fun addNewImageButton() {
-        // DBHelper 인스턴스 생성
+        // DBHelper 인스턴스 생
         val dbHelper = DBHelper(this)
         val db = dbHelper.readableDatabase
 
@@ -282,9 +299,12 @@ class MainActivity : AppCompatActivity() {
         addNewImageButton() // addNewImageButton() 함수 호출
 
         buttonCamera.setOnClickListener {
+            Log.d("MainActivity1", "Button clicked") // 클릭 이벤트 발생 확인
             if (isPermitted(CAMERA_AND_STORAGE_PERMISSION)) {
+                Log.d("MainActivity1", "Permissions granted") // 권한 허용 상태 확인
                 openCamera()
             } else {
+                Log.d("MainActivity1", "Permissions not granted") // 권한 미허용 상태 확인
                 ActivityCompat.requestPermissions(
                     this,
                     CAMERA_AND_STORAGE_PERMISSION,
@@ -362,4 +382,5 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
+
 
