@@ -4,15 +4,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.whisky_note"
+    namespace = "com.cj.whisky_note"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.whisky_note"
+        applicationId = "com.cj.whisky_note"
         minSdk = 24
         targetSdk = 33
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
